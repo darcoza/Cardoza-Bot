@@ -6,7 +6,7 @@ I will use what seem to be fairly standard brushed motors for the weight size, t
 
 I am using MX1508 DC Motor Driver Modules for speed controllers, they are cheap and can easily handle the current requirements of the N20 motors.
 
-I currently have uploaded the code and design for a generic wedge bot, the code is a slightly modified version of the bluetooth controller library I am using (Bluepad32) the repository can be found here:
+I currently have uploaded the code and design for a generic wedge bot, currently it weighs too much (225g), I'm reworking the PCB to be smaller along with new frame designs that are smaller and ligher, the code is a slightly modified version of the bluetooth controller library I am using (Bluepad32) the repository can be found here:
 https://github.com/ricardoquesada/bluepad32
 This code needs to be cleaned up by removing undeeded code and adding a few features but currently will allow you to steer and drive the robot with variable speed control.
 
