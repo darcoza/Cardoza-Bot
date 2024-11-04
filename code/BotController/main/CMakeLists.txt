@@ -5,7 +5,7 @@
 
 # idf_component_register(SRCS ${app_sources})
 
-set(srcs "main.c" "my_platform.c")
+set(srcs "main.c" "robot_platform.c")
 
 set(requires "bluepad32" "btstack")
 

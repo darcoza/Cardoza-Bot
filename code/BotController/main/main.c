@@ -2,6 +2,8 @@
 // Need help? https://tinyurl.com/bluepad32-help
 
 #include <stdlib.h>
+#include <inttypes.h>
+
 
 #include <btstack_port_esp32.h>
 #include <btstack_run_loop.h>
@@ -9,39 +11,178 @@
 #include <uni.h>
 
 #include "sdkconfig.h"
+#include "driver/gpio.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
+#include "MotorController.h"
+// #include "RobotController.h"
+// #include "RobotController.h"
+
 
 // Sanity check
 #ifndef CONFIG_BLUEPAD32_PLATFORM_CUSTOM
 #error "Must use BLUEPAD32_PLATFORM_CUSTOM"
 #endif
 
-// Defined in my_platform.c
+// // Defined in my_platform.c
 struct uni_platform* get_my_platform(void);
+struct uni_platform* get_robot_platform(void);
 
-int app_main(void) {
-    // hci_dump_open(NULL, HCI_DUMP_STDOUT);
+// // QUEUE for cross-task communication
+// static QueueHandle_t gpio_evt_queue = NULL;
 
-    // Don't use BTstack buffered UART. It conflicts with the console.
-#ifdef CONFIG_ESP_CONSOLE_UART
-#ifndef CONFIG_BLUEPAD32_USB_CONSOLE_ENABLE
-    btstack_stdio_init();
-#endif  // CONFIG_BLUEPAD32_USB_CONSOLE_ENABLE
-#endif  // CONFIG_ESP_CONSOLE_UART
+// static void task_process_gpio_event(void* arg)
+// {
+//     uint32_t io_num;
+//     for (;;) {
+//         // Read the Q for any gpio events
+//         if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+//             printf("GPIO[%"PRIu32"] intr, val: %d\n", io_num, gpio_get_level(io_num));
+//         }
+//     }
+// }
 
-    printf("Initializing program, waiting for BT connection...\n");
-    // Configure BTstack for ESP32 VHCI Controller
-    btstack_init();
+// // Interrupt routine that populates Q when something happens
+// static void IRAM_ATTR gpio_isr_handler(void* arg)
+// {
+//     uint32_t gpio_num = (uint32_t) arg;
+//     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+// }
 
-    // hci_dump_init(hci_dump_embedded_stdout_get_instance());
+// #define REG_TO_READ 0x6000403C
+#define REG_TO_READ 0x60009010
 
-    // Must be called before uni_init()
-    uni_platform_set_custom(get_my_platform());
+void print_register(){
+        logi("Register Read Value at 0x%X: 0x%X\n", REG_TO_READ, *(volatile uint32_t *)REG_TO_READ & 0xF);  
+}
 
-    // Init Bluepad32.
-    uni_init(0 /* argc */, NULL /* argv */);
+/* By convention, this overarching task is not allowed to end. */
+void robot_control_loop() {
 
-    // Does not return.
-    btstack_run_loop_execute();
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    logi("Initializing CARDOZABOT...");
+
+    gpio_config_t io_conf = {};
+
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //bit mask of the pins, use GPIO4/5 here
+    io_conf.pin_bit_mask = 4;
+    //set as input mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //enable pull-up mode
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 0;
+    gpio_config(&io_conf);
+
+    gpio_set_level(2, 0);
+
+    for (;;) {
+        logi("CARDOZABOT \n");
+        print_register();
+
+    // Log the value
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    // robot_platform_initialize();
+}
+
+int app_main(void) { // main task?
+
+
+
+    // Primary Robot Task
+    // - initiates and checks subsystems
+    // - manages interfaces between subsystems
+    xTaskCreate(robot_control_loop, "robot_controller", 2048, NULL, 10, NULL);
+
+    for (;;){
+        // Wait forever but don't spam the CPU
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
 
     return 0;
+    // // OUTPUT PIN CONFIG
+    // //zero-initialize the config structure.
+    // gpio_config_t io_conf = {};
+    // //disable interrupt
+    // io_conf.intr_type = GPIO_INTR_DISABLE;
+    // //set as output mode
+    // io_conf.mode = GPIO_MODE_OUTPUT;
+    // //bit mask of the pins that you want to set,e.g.GPIO18/19
+    // io_conf.pin_bit_mask = 1<<2;
+    // //disable pull-down mode
+    // io_conf.pull_down_en = 0;
+    // //disable pull-up mode
+    // io_conf.pull_up_en = 0;
+    // //configure GPIO with the given settings
+    // gpio_config(&io_conf);
+
+    // // INPUT pin config
+    // //interrupt of rising edge
+    // io_conf.intr_type = GPIO_INTR_POSEDGE;
+    // //bit mask of the pins, use GPIO4/5 here
+    // io_conf.pin_bit_mask = 1;
+    // //set as input mode
+    // io_conf.mode = GPIO_MODE_INPUT;
+    // //enable pull-up mode
+    // io_conf.pull_up_en = 0;
+    // gpio_config(&io_conf);
+
+    // // Configure PIN to trigger ISR
+    // //create a queue to handle gpio event from isr
+    // gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+
+    // //install gpio isr service
+    // gpio_install_isr_service(0);
+
+    // //hook isr handler for specific gpio pin
+    // gpio_isr_handler_add(0, gpio_isr_handler, (void*) 0);
+
+    // //start gpio task
+    // xTaskCreate(task_process_gpio_event, "task_process_gpio_event", 2048, NULL, 10, NULL);
+
+    // int pin = 2;
+    // // gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+    // int cnt = 0;
+    // while (1) {
+    //     printf("cnt: %d\n", cnt++);
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //     gpio_set_level(pin, cnt % 2);
+    // }
+
+    //     // Configure BTstack for ESP32 VHCI Controller
+    // btstack_init();
+
+    // // Must be called before uni_init()
+    // // uni_platform_set_custom(get_my_platform()); // This is where we'll put the Robot.
+
+    // uni_platform_set_custom(get_robot_platform()); // This is where we'll put the Robot.
+
+    // // Init Bluepad32.
+    // uni_init(0 /* argc */, NULL /* argv */);
+
+    // // Does not return.
+    // btstack_run_loop_execute();
+
+    // return 0;
 }
+
+// // BT Controller Stuff!
+// int app_main(void) {
+
+//     // hci_dump_open(NULL, HCI_DUMP_STDOUT);
+
+//     // Don't use BTstack buffered UART. It conflicts with the console.
+// #ifdef CONFIG_ESP_CONSOLE_UART
+// #ifndef CONFIG_BLUEPAD32_USB_CONSOLE_ENABLE
+//     btstack_stdio_init();
+// #endif  // CONFIG_BLUEPAD32_USB_CONSOLE_ENABLE
+// #endif  // CONFIG_ESP_CONSOLE_UART
+
+//     printf("Initializing program, waiting for BT connection...\n");
+
+// }

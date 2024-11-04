@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "gpio.h": "c",
+        "uni.h": "c",
+        "btstack_stdio_esp32.h": "c",
+        "btstack_port_esp32.h": "c"
+    }
+}
