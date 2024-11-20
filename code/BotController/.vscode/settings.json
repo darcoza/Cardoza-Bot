@@ -3,6 +3,14 @@
         "gpio.h": "c",
         "uni.h": "c",
         "btstack_stdio_esp32.h": "c",
-        "btstack_port_esp32.h": "c"
+        "btstack_port_esp32.h": "c",
+        "optional": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "freertos.h": "c"
     }
 }
